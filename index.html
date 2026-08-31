@@ -37,7 +37,7 @@ button{cursor:pointer}
 .notify{justify-self:end;width:52px;height:52px;border:0;border-radius:50%;background:#fff;font-size:27px;position:relative;cursor:pointer}
 .notify .dot{display:none;position:absolute;right:6px;top:5px;width:11px;height:11px;border-radius:50%;background:var(--danger);border:2px solid #fff}
 .navrow{display:grid;grid-template-columns:1fr 1fr 1fr;background:#fff;border-bottom:1px solid var(--line)}
-.navbtn{height:58px;border:0;background:#fff;font-weight:800;font-size:16px;color:#596579;border-bottom:3px solid transparent;cursor:pointer}
+.navbtn{height:58px;border:0;background:#fff;font-weight:800;font-size:14px;color:#596579;border-bottom:3px solid transparent;cursor:pointer}
 .navbtn.active{color:#172033;border-bottom-color:#172033}
 .main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.8fr);min-height:calc(100vh - 150px)}
 .feed{padding:16px;border-right:1px solid var(--line)}
@@ -121,7 +121,7 @@ button{cursor:pointer}
   .topbar{height:78px;grid-template-columns:70px 1fr 65px;padding:0 10px}
   .logo-profile{width:54px;height:54px;font-size:28px}.brand{font-size:23px}
   .main{display:block}.feed{border-right:0;padding:10px}.chat-panel{display:none}
-  .settings{right:12px;bottom:12px}.navbtn{height:52px;font-size:13px}
+  .settings{right:12px;bottom:12px}.navbtn{height:52px;font-size:11px;padding:0 4px}
 }
 </style>
 </head>
@@ -138,8 +138,8 @@ button{cursor:pointer}
 
   <nav class="navrow">
     <button class="navbtn active" id="threadBtn" onclick="showTab('thread')">THREAD</button>
-    <button class="navbtn" id="chartBtn" onclick="showTab('chart')">CHART</button>
     <button class="navbtn" id="friendsBtn" onclick="showTab('friends')">FRIENDS</button>
+    <button class="navbtn" id="chartBtn" onclick="showTab('chart')">CHART</button>
   </nav>
 
   <main class="main">
@@ -167,7 +167,7 @@ button{cursor:pointer}
       <div id="usersList"><div class="empty">Loading users...</div></div>
     </section>
 
-    <aside class="chat-panel" id="chartView">
+    <aside class="chat-panel" id="chartView" style="display:none">
       <div class="chat-head">💬 CHAT</div>
       <div id="chatList"><div class="empty">Loading chats...</div></div>
     </aside>
@@ -196,7 +196,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
 
 // ==========================================
 // STATE
@@ -227,19 +226,42 @@ auth.onAuthStateChanged(async function(user) {
 });
 
 // ==========================================
-// LOAD USER PROFILE
+// LOAD USER PROFILE - FIXED: Create if not exists
 // ==========================================
 async function loadUserProfile() {
   try {
-    const doc = await db.collection('users').doc(currentUser.uid).get();
+    const docRef = db.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+    
     if (doc.exists) {
       currentUserData = doc.data();
       currentUsername = currentUserData.displayName || currentUserData.username || 'User';
       currentAvatar = currentUserData.avatar || '';
+    } else {
+      // Create user document if it doesn't exist
+      const email = currentUser.email || 'user@maja.local';
+      const username = email.split('@')[0] || 'User';
+      currentUsername = username;
+      currentAvatar = '';
+      
+      await docRef.set({
+        username: username.toLowerCase(),
+        displayName: username,
+        avatar: '',
+        email: email,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      currentUserData = {
+        username: username.toLowerCase(),
+        displayName: username,
+        avatar: ''
+      };
+      showNotification('✅ Profile created!');
     }
     refreshTopAvatar();
   } catch (error) {
     console.error('Error loading profile:', error);
+    showNotification('⚠️ Error loading profile');
   }
 }
 
@@ -255,12 +277,6 @@ function refreshTopAvatar() {
     el.textContent = currentUsername.charAt(0).toUpperCase();
   }
 }
-
-// ==========================================
-// GET USERNAME
-// ==========================================
-function getUsername() { return currentUsername; }
-function getAvatar() { return currentAvatar; }
 
 // ==========================================
 // LOAD POSTS
@@ -377,7 +393,7 @@ function previewImage(e) {
 }
 
 // ==========================================
-// LIKE POST - FIXED
+// LIKE POST
 // ==========================================
 async function likePost(id) {
   if (!currentUser) return;
@@ -401,7 +417,7 @@ async function likePost(id) {
 }
 
 // ==========================================
-// REPOST - FIXED
+// REPOST
 // ==========================================
 async function repost(id) {
   if (!currentUser) return;
@@ -421,7 +437,7 @@ async function repost(id) {
 }
 
 // ==========================================
-// COMMENT - FIXED
+// COMMENT
 // ==========================================
 async function addComment(id) {
   if (!currentUser) { alert('Please login first!'); return; }
@@ -470,7 +486,7 @@ async function deletePost(id) {
 }
 
 // ==========================================
-// LOAD ALL USERS - FOR SEARCH & FRIENDS
+// LOAD ALL USERS
 // ==========================================
 async function loadAllUsers() {
   try {
@@ -494,7 +510,7 @@ async function loadAllUsers() {
 }
 
 // ==========================================
-// RENDER USERS - FIXED
+// RENDER USERS
 // ==========================================
 function renderUsers(users) {
   const box = document.getElementById('usersList');
@@ -514,7 +530,7 @@ function renderUsers(users) {
             <div style="font-size:12px;color:var(--muted)">@${esc(u.username)}</div>
           </div>
         </div>
-        <button class="friend-add-btn ${isFriend ? 'added' : ''}" onclick="toggleFriend('${u.id}','${esc(u.displayName)}')">
+        <button class="friend-add-btn ${isFriend ? 'added' : ''}" onclick="event.stopPropagation();toggleFriend('${u.id}','${esc(u.displayName)}')">
           ${isFriend ? '✓ FRIEND' : '+ ADD'}
         </button>
       </div>
@@ -523,7 +539,7 @@ function renderUsers(users) {
 }
 
 // ==========================================
-// SEARCH USERS - FIXED
+// SEARCH USERS
 // ==========================================
 function searchUsers() {
   const query = document.getElementById('searchUsers').value.toLowerCase().trim();
@@ -554,7 +570,7 @@ async function loadFriends() {
 }
 
 // ==========================================
-// TOGGLE FRIEND - FIXED
+// TOGGLE FRIEND
 // ==========================================
 async function toggleFriend(userId, userName) {
   if (!currentUser) return;
@@ -571,12 +587,9 @@ async function toggleFriend(userId, userName) {
         name: userName,
         addedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      const userDoc = await db.collection('users').doc(userId).get();
-      const userData = userDoc.data();
       friendsList.push({ 
         id: userId, 
-        name: userName,
-        avatar: userData?.avatar || ''
+        name: userName
       });
       showNotification('✅ ' + userName + ' added as friend!');
     }
@@ -698,7 +711,7 @@ function sendMessage(name) {
 }
 
 // ==========================================
-// SHOW TAB - FIXED
+// SHOW TAB
 // ==========================================
 function showTab(tab) {
   document.getElementById('threadView').style.display = tab === 'thread' ? 'block' : 'none';
@@ -711,7 +724,7 @@ function showTab(tab) {
 }
 
 // ==========================================
-// PROFILE - FIXED
+// PROFILE - FIXED: Create document if not exists
 // ==========================================
 function openProfile() {
   openSimple(`
@@ -722,9 +735,9 @@ function openProfile() {
         ${currentAvatar ? `<img src="${currentAvatar}" style="width:100%;height:100%;object-fit:cover">` : currentUsername.charAt(0).toUpperCase()}
       </div>
       <br>
-      <label class="file-label" style="display:inline-block;background:var(--blue);color:#fff;padding:8px 20px;border-radius:40px">
+      <label class="file-label" style="display:inline-block;background:var(--blue);color:#fff;padding:8px 20px;border-radius:40px;cursor:pointer">
         📷 Change Picture
-        <input type="file" accept="image/*" onchange="changeProfilePicture(event)">
+        <input type="file" accept="image/*" onchange="changeProfilePicture(event)" style="display:none">
       </label>
     </div>
     <label style="display:block;margin-top:18px;font-weight:700">Username</label>
@@ -747,9 +760,21 @@ async function changeProfilePicture(e) {
     currentAvatar = imageData;
     
     try {
-      await db.collection('users').doc(currentUser.uid).update({ 
-        avatar: imageData 
-      });
+      // Check if user document exists, create if not
+      const docRef = db.collection('users').doc(currentUser.uid);
+      const doc = await docRef.get();
+      
+      if (!doc.exists) {
+        await docRef.set({
+          username: currentUsername.toLowerCase(),
+          displayName: currentUsername,
+          avatar: imageData,
+          email: currentUser.email || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        await docRef.update({ avatar: imageData });
+      }
       
       const avatarEl = document.getElementById('profileAvatar');
       if (avatarEl) {
@@ -773,27 +798,37 @@ async function saveProfile() {
   const name = (input.value || '').trim();
   if (!name) { alert('Please enter a username.'); return; }
   
-  if (name.toLowerCase() !== currentUsername.toLowerCase()) {
-    try {
-      const usernameRef = db.collection('usernames').doc(name.toLowerCase());
-      const existing = await usernameRef.get();
-      if (existing.exists && existing.data().uid !== currentUser.uid) {
-        alert('⚠️ This username is already taken!');
-        return;
-      }
-      await usernameRef.set({ uid: currentUser.uid, username: name.toLowerCase() });
-    } catch (error) {
-      alert('Error: ' + error.message);
-      return;
-    }
-  }
-  
-  currentUsername = name;
   try {
-    await db.collection('users').doc(currentUser.uid).update({ 
-      displayName: name,
-      username: name.toLowerCase()
-    });
+    // Check if user document exists, create if not
+    const docRef = db.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+    
+    if (!doc.exists) {
+      await docRef.set({
+        username: name.toLowerCase(),
+        displayName: name,
+        avatar: currentAvatar || '',
+        email: currentUser.email || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      // Check if username is taken by another user
+      if (name.toLowerCase() !== currentUsername.toLowerCase()) {
+        const usernameRef = db.collection('usernames').doc(name.toLowerCase());
+        const existing = await usernameRef.get();
+        if (existing.exists && existing.data().uid !== currentUser.uid) {
+          alert('⚠️ This username is already taken!');
+          return;
+        }
+        await usernameRef.set({ uid: currentUser.uid, username: name.toLowerCase() });
+      }
+      await docRef.update({ 
+        displayName: name,
+        username: name.toLowerCase()
+      });
+    }
+    
+    currentUsername = name;
     refreshTopAvatar();
     closeAll();
     await loadPosts();
@@ -895,12 +930,12 @@ document.body.prepend(notifDiv);
 // ==========================================
 // INIT
 // ==========================================
-console.log('🔥 MAJA Social - Fully Fixed!');
+console.log('🔥 MAJA Social - Fully Fixed v5!');
+console.log('✅ Profile document auto-created if missing');
 console.log('✅ Search engine working');
 console.log('✅ Like, Comment, Repost working');
 console.log('✅ Add friends working');
 console.log('✅ Profile picture upload working');
-console.log('✅ Username edit working');
 </script>
 
 </body>
