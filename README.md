@@ -1,22 +1,20 @@
-# 🌐 Maja Social Media
+# 🌐 MAJA Social Media
 
-App ɗin zamani don haɗa abokai, gudanar da threads, da kallon ayyukan al'umma.
+A modern social media app built with Firebase.
 
----
+## ✨ Features
 
-## ✨ Abubuwan da yake yi (Features)
+- ✅ Login / Signup with Firebase Auth
+- ✅ Create posts with images
+- ✅ Like, Comment, Repost
+- ✅ Profile with avatar and gender
+- ✅ Search users
+- ✅ Add/Remove friends
+- ✅ Dark mode
+- ✅ Delete account
 
-- ✅ Ƙara abokai da username
-- ✅ Threads system (sabbin maganganu)
-- ✅ Kididdigar thread & abokan kan layi
-- ✅ Chart + group chart (nuna ayyukan mako)
-- ✅ Bot on profile (@maja_bot)
-- ✅ Jerin abokai da maɓallin ADD FRIEND
-- ✅ Na'urar sadarwa mai sauƙi
+## 🚀 Live Demo
 
----
+[GitHub Pages URL](https://[username].github.io/maja-social-media/)
 
-## 🖼️ Hotunan App
-
-> (Ka iya sanya hoton app ɗinka nan gaba)
-> 
+## 📂 File Structure
