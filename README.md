@@ -1,6 +1,6 @@
 # 🌐 MAJA Social Media
 
-A modern social media app built with Firebase.
+A complete social media app built with Firebase.
 
 ## ✨ Features
 
@@ -15,6 +15,22 @@ A modern social media app built with Firebase.
 
 ## 🚀 Live Demo
 
-[GitHub Pages URL](https://[username].github.io/maja-social-media/)
+https://[your-username].github.io/maja-social-media/
 
-## 📂 File Structure
+## 📂 Files
+
+- `index.html` - Main app
+- `login.html` - Login page
+- `firebase.js` - Firebase config
+- `firestore.rules` - Firebase rules
+
+## 🔥 Firebase Setup
+
+1. Create Firebase project
+2. Enable Email/Password Authentication
+3. Enable Firestore Database
+4. Add `firestore.rules` in Firestore Rules
+
+---
+
+**MAJA Social** © 2026
