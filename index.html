@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MAJA - Login</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
 <style>
 *{box-sizing:border-box}
 body{
@@ -181,11 +187,10 @@ body{
   <div class="footer">MAJA</div>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
+// ==========================================
+// FIREBASE CONFIG
+// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyARNIMr9CLKIFOt6AONAa4fYz-pe28yX4I",
   authDomain: "maja-ae9d0.firebaseapp.com",
@@ -194,57 +199,89 @@ const firebaseConfig = {
   messagingSenderId: "21674614341",
   appId: "1:21674614341:web:2f63073f1d0e1c3df04d2c"
 };
+
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+console.log('🔥 Firebase initialized!');
+
+// ==========================================
+// STATE
+// ==========================================
 let mode = 'login';
 
-function setMode(m){
-  mode = m;
-  document.getElementById('tabLogin').classList.toggle('active', m==='login');
-  document.getElementById('tabSignup').classList.toggle('active', m==='signup');
-  document.getElementById('confirmWrap').style.display = m==='signup' ? 'block' : 'none';
-  document.getElementById('subtitle').textContent = m==='signup' ? 'Create your MAJA account' : 'Welcome back to MAJA';
-  document.getElementById('submitBtn').textContent = m==='signup' ? 'CREATE ACCOUNT' : 'CONTINUE';
-  setMessage('');
-}
-
-function setMessage(text, kind){
-  const el = document.getElementById('message');
-  el.textContent = text || '';
-  el.className = 'message' + (kind ? ' '+kind : '');
-}
-
-function normalizeUsername(raw){
-  return raw.trim().toLowerCase().replace(/[^a-z0-9_.]/g,'');
-}
-function usernameToEmail(usernameLower){
-  return usernameLower + '@maja.local';
-}
-
-auth.onAuthStateChanged(function(user){
-  if(user){
+// ==========================================
+// CHECK IF USER IS ALREADY LOGGED IN
+// ==========================================
+auth.onAuthStateChanged(function(user) {
+  if (user) {
+    console.log('✅ User already logged in:', user.email);
     window.location.href = 'index.html';
+  } else {
+    console.log('👤 No user logged in');
   }
 });
 
-async function submitForm(){
+// ==========================================
+// SET MODE (Login / Signup)
+// ==========================================
+function setMode(m) {
+  mode = m;
+  document.getElementById('tabLogin').classList.toggle('active', m === 'login');
+  document.getElementById('tabSignup').classList.toggle('active', m === 'signup');
+  document.getElementById('confirmWrap').style.display = m === 'signup' ? 'block' : 'none';
+  document.getElementById('subtitle').textContent = m === 'signup' ? 'Create your MAJA account' : 'Welcome back to MAJA';
+  document.getElementById('submitBtn').textContent = m === 'signup' ? 'CREATE ACCOUNT' : 'CONTINUE';
+  setMessage('');
+}
+
+// ==========================================
+// SET MESSAGE
+// ==========================================
+function setMessage(text, kind) {
+  const el = document.getElementById('message');
+  el.textContent = text || '';
+  el.className = 'message' + (kind ? ' ' + kind : '');
+}
+
+// ==========================================
+// NORMALIZE USERNAME
+// ==========================================
+function normalizeUsername(raw) {
+  return raw.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '');
+}
+
+function usernameToEmail(usernameLower) {
+  return usernameLower + '@maja.local';
+}
+
+// ==========================================
+// SUBMIT FORM
+// ==========================================
+async function submitForm() {
+  console.log('🚀 Submit button clicked!');
+  
   const rawUsername = document.getElementById('username').value;
   const password = document.getElementById('password').value;
   const confirmPassword = document.getElementById('confirmPassword').value;
   const usernameLower = normalizeUsername(rawUsername);
   const btn = document.getElementById('submitBtn');
 
-  if(!usernameLower || usernameLower.length < 3){
+  console.log('📝 Username:', rawUsername);
+  console.log('📝 Mode:', mode);
+
+  // Validation
+  if (!usernameLower || usernameLower.length < 3) {
     setMessage('Username must be at least 3 characters (a-z, 0-9, _).', 'error');
     return;
   }
-  if(!password || password.length < 6){
+  if (!password || password.length < 6) {
     setMessage('Password must be at least 6 characters.', 'error');
     return;
   }
-  if(mode === 'signup' && password !== confirmPassword){
+  if (mode === 'signup' && password !== confirmPassword) {
     setMessage('Passwords do not match.', 'error');
     return;
   }
@@ -253,51 +290,86 @@ async function submitForm(){
   setMessage('Processing...', '');
 
   const email = usernameToEmail(usernameLower);
+  console.log('📧 Email:', email);
 
-  try{
-    if(mode === 'signup'){
+  try {
+    if (mode === 'signup') {
+      // Check if username exists
       const usernameRef = db.collection('usernames').doc(usernameLower);
       const existing = await usernameRef.get();
-      if(existing.exists){
+      if (existing.exists) {
         setMessage('This username is already taken.', 'error');
         btn.disabled = false;
         return;
       }
+
+      // Create user
       const cred = await auth.createUserWithEmailAndPassword(email, password);
       const uid = cred.user.uid;
+      console.log('✅ User created:', uid);
+
+      // Save username
       await usernameRef.set({ uid: uid, username: usernameLower });
+
+      // Save user profile
       await db.collection('users').doc(uid).set({
         username: usernameLower,
         displayName: rawUsername.trim(),
-        avatar: null,
+        avatar: '',
         gender: 'Male',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
+
       setMessage('Account created! Logging in...', 'ok');
     } else {
+      // Login
       await auth.signInWithEmailAndPassword(email, password);
       setMessage('Logged in! Loading MAJA...', 'ok');
     }
-    window.location.href = 'index.html';
-  }catch(err){
+
+    // Redirect to index.html
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 500);
+
+  } catch (err) {
+    console.error('❌ Error:', err);
     btn.disabled = false;
     setMessage(friendlyError(err), 'error');
   }
 }
 
-function friendlyError(err){
+// ==========================================
+// FRIENDLY ERROR MESSAGES
+// ==========================================
+function friendlyError(err) {
   const code = err && err.code || '';
-  if(code === 'auth/email-already-in-use') return 'Username already taken. Try another or go to LOG IN.';
-  if(code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') return 'Invalid username or password.';
-  if(code === 'auth/weak-password') return 'Password is too weak.';
-  if(code === 'auth/network-request-failed') return 'No internet connection. Check your network.';
-  return 'Something went wrong. Please try again.';
+  if (code === 'auth/email-already-in-use') return 'Username already taken. Try another or go to LOG IN.';
+  if (code === 'auth/user-not-found') return 'Invalid username or password.';
+  if (code === 'auth/wrong-password') return 'Invalid username or password.';
+  if (code === 'auth/invalid-credential') return 'Invalid username or password.';
+  if (code === 'auth/weak-password') return 'Password is too weak. Use at least 6 characters.';
+  if (code === 'auth/network-request-failed') return 'No internet connection. Check your network.';
+  if (code === 'auth/too-many-requests') return 'Too many failed attempts. Please try again later.';
+  return 'Something went wrong: ' + (err.message || 'Please try again.');
 }
 
-document.getElementById('password').addEventListener('keydown', e=>{ if(e.key==='Enter') submitForm(); });
-document.getElementById('confirmPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') submitForm(); });
-document.getElementById('username').addEventListener('keydown', e=>{ if(e.key==='Enter') submitForm(); });
+// ==========================================
+// KEYBOARD EVENTS - Press Enter to submit
+// ==========================================
+document.getElementById('password').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitForm();
+});
+document.getElementById('confirmPassword').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitForm();
+});
+document.getElementById('username').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitForm();
+});
+
+console.log('✅ Login page loaded successfully!');
+console.log('📌 Click "CONTINUE" or press Enter to submit.');
 </script>
 
 </body>
-  </html>
+</html>
