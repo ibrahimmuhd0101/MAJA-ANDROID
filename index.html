@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ha">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -109,6 +109,14 @@ button{cursor:pointer}
 }
 .search-box input{flex:1;border:0;outline:0;background:transparent;font-size:14px;color:var(--text)}
 .search-box input::placeholder{color:var(--muted)}
+.search-box button{background:var(--blue);color:#fff;border:0;border-radius:40px;padding:8px 20px;font-weight:700;cursor:pointer}
+.search-box button:hover{background:var(--blue2)}
+.user-card{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer
+}
+.user-card:hover{background:#f6f8fc}
+.user-card .user-info{display:flex;align-items:center;gap:10px;flex:1}
 @media(max-width:760px){
   .topbar{height:78px;grid-template-columns:70px 1fr 65px;padding:0 10px}
   .logo-profile{width:54px;height:54px;font-size:28px}.brand{font-size:23px}
@@ -137,7 +145,7 @@ button{cursor:pointer}
   <main class="main">
     <section class="feed" id="threadView">
       <div class="composer">
-        <textarea id="postText" placeholder="Hello Maja users, type something..."></textarea>
+        <textarea id="postText" placeholder="Hello MAJA users, type something..."></textarea>
         <div class="compose-row">
           <label class="file-label">📷 Picture
             <input id="postImage" type="file" accept="image/*" onchange="previewImage(event)">
@@ -146,15 +154,15 @@ button{cursor:pointer}
         </div>
         <img id="preview" class="post-image" alt="Preview">
       </div>
-      <div class="section-title">THREAD</div>
+      <div class="section-title">📰 THREAD</div>
       <div id="posts"><div class="empty">Loading posts...</div></div>
     </section>
 
     <section class="feed" id="friendsView" style="display:none">
       <div class="section-title">👥 FIND FRIENDS</div>
       <div class="search-box">
-        <span>🔍</span>
-        <input id="searchUsers" placeholder="Search users by username..." oninput="searchUsers()">
+        <input id="searchUsers" placeholder="Search users by username..." onkeyup="searchUsers()">
+        <button onclick="searchUsers()">🔍 SEARCH</button>
       </div>
       <div id="usersList"><div class="empty">Loading users...</div></div>
     </section>
@@ -283,7 +291,7 @@ async function loadPosts() {
 function renderPosts() {
   const box = document.getElementById('posts');
   if (!posts.length) {
-    box.innerHTML = '<div class="empty">Babu post tukuna. Ka fara rubutu!</div>';
+    box.innerHTML = '<div class="empty">No posts yet. Start writing!</div>';
     return;
   }
   box.innerHTML = posts.map(p => `
@@ -324,11 +332,11 @@ function esc(s) { return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;',
 // CREATE POST
 // ==========================================
 async function createPost() {
-  if (!currentUser) { alert('Da fatan ka shiga farko!'); return; }
+  if (!currentUser) { alert('Please login first!'); return; }
   const text = document.getElementById('postText').value.trim();
   const preview = document.getElementById('preview');
   const image = preview.dataset.image || '';
-  if (!text && !image) { alert('Rubuta message ko saka picture.'); return; }
+  if (!text && !image) { alert('Write a message or add a picture.'); return; }
   
   try {
     await db.collection('posts').add({
@@ -349,6 +357,7 @@ async function createPost() {
     preview.style.display = 'none';
     document.getElementById('postImage').value = '';
     await loadPosts();
+    showNotification('✅ Post created!');
   } catch (error) {
     alert('Error: ' + error.message);
   }
@@ -356,7 +365,7 @@ async function createPost() {
 
 function previewImage(e) {
   const file = e.target.files[0]; if (!file) return;
-  if (!file.type.startsWith('image/')) { alert('Zaɓi picture kawai.'); return; }
+  if (!file.type.startsWith('image/')) { alert('Please select an image.'); return; }
   const r = new FileReader();
   r.onload = () => {
     const img = document.getElementById('preview');
@@ -405,7 +414,7 @@ async function repost(id) {
     });
     p.reposts = (p.reposts || 0) + 1;
     renderPosts();
-    showNotification('✅ An yi repost!');
+    showNotification('✅ Reposted!');
   } catch (error) {
     console.error('Error reposting:', error);
   }
@@ -415,7 +424,7 @@ async function repost(id) {
 // COMMENT - FIXED
 // ==========================================
 async function addComment(id) {
-  if (!currentUser) { alert('Da fatan ka shiga farko!'); return; }
+  if (!currentUser) { alert('Please login first!'); return; }
   const input = document.getElementById('comment-input-' + id);
   if (!input || !input.value.trim()) return;
   
@@ -450,10 +459,11 @@ function toggleComment(id) {
 // DELETE POST
 // ==========================================
 async function deletePost(id) {
-  if (!confirm('A goge wannan post?')) return;
+  if (!confirm('Delete this post?')) return;
   try {
     await db.collection('posts').doc(id).delete();
     await loadPosts();
+    showNotification('✅ Post deleted!');
   } catch (error) {
     alert('Error: ' + error.message);
   }
@@ -496,12 +506,12 @@ function renderUsers(users) {
   box.innerHTML = users.map(u => {
     const isFriend = friendsList.some(f => f.id === u.id);
     return `
-      <div class="chat-item" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px">
-        <div style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer" onclick="viewUserProfile('${u.id}')">
+      <div class="user-card">
+        <div class="user-info" onclick="viewUserProfile('${u.id}')">
           <div class="avatar">${u.avatar ? `<img src="${u.avatar}" alt="">` : u.displayName.charAt(0).toUpperCase()}</div>
-          <div class="chat-text">
+          <div>
             <b>${esc(u.displayName)}</b>
-            <span>@${esc(u.username)}</span>
+            <div style="font-size:12px;color:var(--muted)">@${esc(u.username)}</div>
           </div>
         </div>
         <button class="friend-add-btn ${isFriend ? 'added' : ''}" onclick="toggleFriend('${u.id}','${esc(u.displayName)}')">
@@ -553,12 +563,10 @@ async function toggleFriend(userId, userName) {
   
   try {
     if (isFriend) {
-      // Remove friend
       await db.collection('users').doc(currentUser.uid).collection('friends').doc(userId).delete();
       friendsList = friendsList.filter(f => f.id !== userId);
-      showNotification('❌ ' + userName + ' an cire shi daga friends');
+      showNotification('❌ ' + userName + ' removed from friends');
     } else {
-      // Add friend
       await db.collection('users').doc(currentUser.uid).collection('friends').doc(userId).set({
         name: userName,
         addedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -570,9 +578,10 @@ async function toggleFriend(userId, userName) {
         name: userName,
         avatar: userData?.avatar || ''
       });
-      showNotification('✅ ' + userName + ' an ƙara shi a friends!');
+      showNotification('✅ ' + userName + ' added as friend!');
     }
     renderUsers(allUsers);
+    await loadChats();
   } catch (error) {
     console.error('Error toggling friend:', error);
     alert('Error: ' + error.message);
@@ -612,7 +621,6 @@ async function viewUserProfile(userId) {
 // ==========================================
 async function loadChats() {
   try {
-    // Load friends for chat
     const snapshot = await db.collection('users').doc(currentUser.uid).collection('friends').get();
     chatUsers = [];
     for (const doc of snapshot.docs) {
@@ -661,8 +669,8 @@ function openChat(userId, name) {
       <b style="font-size:19px">💬 ${esc(name)}</b>
     </div>
     <div class="messages" id="messages">
-      <div class="msg other">Sannu 👋</div>
-      <div class="msg other">Barka da zuwa MAJA.</div>
+      <div class="msg other">Hello 👋</div>
+      <div class="msg other">Welcome to MAJA.</div>
     </div>
     <div class="chat-input">
       <input id="chatInput" placeholder="Write message..." onkeydown="if(event.key==='Enter') sendMessage('${esc(name)}')">
@@ -683,7 +691,7 @@ function sendMessage(name) {
   setTimeout(() => {
     const r = document.createElement('div');
     r.className = 'msg other';
-    r.textContent = 'Okay, na gani 👍';
+    r.textContent = 'Okay, I see 👍';
     messages.appendChild(r);
     messages.scrollTop = messages.scrollHeight;
   }, 700);
@@ -748,7 +756,7 @@ async function changeProfilePicture(e) {
         avatarEl.innerHTML = `<img src="${imageData}" style="width:100%;height:100%;object-fit:cover">`;
       }
       refreshTopAvatar();
-      showNotification('✅ Avatar an canza!');
+      showNotification('✅ Avatar updated!');
     } catch (error) {
       console.error('Error saving avatar:', error);
       alert('Error: ' + error.message);
@@ -763,18 +771,16 @@ async function changeProfilePicture(e) {
 async function saveProfile() {
   const input = document.getElementById('usernameInput');
   const name = (input.value || '').trim();
-  if (!name) { alert('Saka username.'); return; }
+  if (!name) { alert('Please enter a username.'); return; }
   
-  // Check if username is taken
   if (name.toLowerCase() !== currentUsername.toLowerCase()) {
     try {
       const usernameRef = db.collection('usernames').doc(name.toLowerCase());
       const existing = await usernameRef.get();
       if (existing.exists && existing.data().uid !== currentUser.uid) {
-        alert('⚠️ Wannan username an riga an dauka!');
+        alert('⚠️ This username is already taken!');
         return;
       }
-      // Update username
       await usernameRef.set({ uid: currentUser.uid, username: name.toLowerCase() });
     } catch (error) {
       alert('Error: ' + error.message);
@@ -792,7 +798,7 @@ async function saveProfile() {
     closeAll();
     await loadPosts();
     await loadAllUsers();
-    showNotification('✅ Profile an gyara!');
+    showNotification('✅ Profile updated!');
   } catch (error) {
     alert('Error: ' + error.message);
   }
@@ -802,7 +808,7 @@ async function saveProfile() {
 // LOGOUT
 // ==========================================
 function logout() {
-  if (confirm('Ka tabbatar ka fita?')) {
+  if (confirm('Are you sure you want to logout?')) {
     auth.signOut().then(() => {
       window.location.href = 'login.html';
     });
@@ -833,8 +839,6 @@ function showNotification(msg) {
     notif.textContent = msg;
     notif.style.display = 'block';
     setTimeout(() => { notif.style.display = 'none'; }, 3000);
-  } else {
-    alert(msg);
   }
 }
 
@@ -891,10 +895,10 @@ document.body.prepend(notifDiv);
 // ==========================================
 // INIT
 // ==========================================
-console.log('🔥 MAJA Social with Firebase - Fully Fixed!');
+console.log('🔥 MAJA Social - Fully Fixed!');
+console.log('✅ Search engine working');
 console.log('✅ Like, Comment, Repost working');
-console.log('✅ Search users working');
-console.log('✅ Add/Remove friends working');
+console.log('✅ Add friends working');
 console.log('✅ Profile picture upload working');
 console.log('✅ Username edit working');
 </script>
