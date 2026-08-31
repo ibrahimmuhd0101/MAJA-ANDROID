@@ -1,1 +1,304 @@
+<!DOCTYPE html>
+<html lang="ha">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAJA - Login</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  background:#fff;
+  font-family:Arial,Helvetica,sans-serif;
+  color:#172033;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.login{
+  width:min(430px,92vw);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:35px 25px;
+}
+.logo{
+  width:180px;
+  height:180px;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:20px;
+}
+.shape{
+  position:absolute;
+  width:112px;
+  height:55px;
+  border:4px solid #172033;
+  border-radius:35px;
+}
+.s1{transform:rotate(45deg)}
+.s2{transform:rotate(-45deg)}
+.s3{transform:rotate(135deg)}
+.s4{transform:rotate(-135deg)}
+.m{
+  position:relative;
+  z-index:3;
+  font-size:42px;
+  font-weight:900;
+  letter-spacing:2px;
+}
+.title{
+  font-size:34px;
+  font-weight:800;
+  letter-spacing:6px;
+  margin-bottom:8px;
+}
+.subtitle{
+  color:#718096;
+  font-size:15px;
+  margin-bottom:25px;
+}
+.switcher{
+  display:flex;
+  width:100%;
+  background:#f2f4f8;
+  border-radius:12px;
+  padding:4px;
+  margin-bottom:22px;
+}
+.switcher button{
+  flex:1;
+  border:0;
+  background:transparent;
+  padding:10px;
+  border-radius:9px;
+  font-weight:800;
+  font-size:14px;
+  color:#718096;
+  cursor:pointer;
+}
+.switcher button.active{
+  background:#172033;
+  color:#fff;
+}
+.form{
+  width:100%;
+}
+.label{
+  display:block;
+  font-size:14px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+.field{
+  width:100%;
+  border:1px solid #dfe4ec;
+  border-radius:12px;
+  overflow:hidden;
+  background:#fff;
+  margin-bottom:16px;
+}
+.field input{
+  width:100%;
+  border:0;
+  outline:none;
+  padding:14px;
+  font-size:16px;
+  font-family:inherit;
+}
+.loginbtn{
+  width:100%;
+  border:0;
+  border-radius:12px;
+  padding:14px;
+  background:#172033;
+  color:#fff;
+  font-size:16px;
+  font-weight:800;
+  cursor:pointer;
+}
+.loginbtn:active{transform:scale(.99)}
+.loginbtn:disabled{opacity:.55;cursor:not-allowed}
+.message{
+  min-height:22px;
+  text-align:center;
+  margin-top:15px;
+  font-size:14px;
+}
+.message.error{color:#e34b4b}
+.message.ok{color:#31a354}
+.footer{
+  margin-top:30px;
+  color:#9aa3b2;
+  font-size:12px;
+}
+</style>
+</head>
+<body>
 
+<div class="login">
+
+  <div class="logo" aria-label="MAJA logo">
+    <div class="shape s1"></div>
+    <div class="shape s2"></div>
+    <div class="shape s3"></div>
+    <div class="shape s4"></div>
+    <div class="m">M</div>
+  </div>
+
+  <div class="title">MAJA</div>
+  <div class="subtitle" id="subtitle">Welcome to MAJA</div>
+
+  <div class="switcher">
+    <button id="tabLogin" class="active" onclick="setMode('login')">LOG IN</button>
+    <button id="tabSignup" onclick="setMode('signup')">SIGN UP</button>
+  </div>
+
+  <div class="form">
+    <label class="label">Username</label>
+    <div class="field">
+      <input id="username" type="text" placeholder="e.g. husna23" autocomplete="username">
+    </div>
+
+    <label class="label">Password</label>
+    <div class="field">
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    </div>
+
+    <div class="field" id="confirmWrap" style="display:none">
+      <input id="confirmPassword" type="password" placeholder="Confirm password" autocomplete="new-password">
+    </div>
+
+    <button class="loginbtn" id="submitBtn" onclick="submitForm()">CONTINUE</button>
+    <div class="message" id="message"></div>
+  </div>
+
+  <div class="footer">MAJA</div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyARNIMr9CLKIFOt6AONAa4fYz-pe28yX4I",
+  authDomain: "maja-ae9d0.firebaseapp.com",
+  projectId: "maja-ae9d0",
+  storageBucket: "maja-ae9d0.firebasestorage.app",
+  messagingSenderId: "21674614341",
+  appId: "1:21674614341:web:2f63073f1d0e1c3df04d2c"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let mode = 'login';
+
+function setMode(m){
+  mode = m;
+  document.getElementById('tabLogin').classList.toggle('active', m==='login');
+  document.getElementById('tabSignup').classList.toggle('active', m==='signup');
+  document.getElementById('confirmWrap').style.display = m==='signup' ? 'block' : 'none';
+  document.getElementById('subtitle').textContent = m==='signup' ? 'Create your MAJA account' : 'Welcome back to MAJA';
+  document.getElementById('submitBtn').textContent = m==='signup' ? 'CREATE ACCOUNT' : 'CONTINUE';
+  setMessage('');
+}
+
+function setMessage(text, kind){
+  const el = document.getElementById('message');
+  el.textContent = text || '';
+  el.className = 'message' + (kind ? ' '+kind : '');
+}
+
+function normalizeUsername(raw){
+  return raw.trim().toLowerCase().replace(/[^a-z0-9_.]/g,'');
+}
+function usernameToEmail(usernameLower){
+  return usernameLower + '@maja.local';
+}
+
+// If already logged in, go straight to the app
+auth.onAuthStateChanged(function(user){
+  if(user){
+    window.location.href = 'index.html';
+  }
+});
+
+async function submitForm(){
+  const rawUsername = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const confirmPassword = document.getElementById('confirmPassword').value;
+  const usernameLower = normalizeUsername(rawUsername);
+  const btn = document.getElementById('submitBtn');
+
+  if(!usernameLower || usernameLower.length < 3){
+    setMessage('Sunan mai amfani dole ya kasance akalla haruffa 3 (a-z, 0-9, _).', 'error');
+    return;
+  }
+  if(!password || password.length < 6){
+    setMessage('Kalmar sirri dole ta kasance akalla haruffa 6.', 'error');
+    return;
+  }
+  if(mode === 'signup' && password !== confirmPassword){
+    setMessage('Kalmomin sirri ba su daidaita ba.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  setMessage('Ana aiki...', '');
+
+  const email = usernameToEmail(usernameLower);
+
+  try{
+    if(mode === 'signup'){
+      // Reserve the username first so two people can't grab the same one
+      const usernameRef = db.collection('usernames').doc(usernameLower);
+      const existing = await usernameRef.get();
+      if(existing.exists){
+        setMessage('An riga an dauki wannan sunan mai amfani.', 'error');
+        btn.disabled = false;
+        return;
+      }
+      const cred = await auth.createUserWithEmailAndPassword(email, password);
+      const uid = cred.user.uid;
+      await usernameRef.set({ uid: uid, username: usernameLower });
+      await db.collection('users').doc(uid).set({
+        username: usernameLower,
+        displayName: rawUsername.trim(),
+        avatar: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      setMessage('An kirkiri asusu! Ana shigar da kai...', 'ok');
+    } else {
+      await auth.signInWithEmailAndPassword(email, password);
+      setMessage('An shiga! Ana loda MAJA...', 'ok');
+    }
+    window.location.href = 'index.html';
+  }catch(err){
+    btn.disabled = false;
+    setMessage(friendlyError(err), 'error');
+  }
+}
+
+function friendlyError(err){
+  const code = err && err.code || '';
+  if(code === 'auth/email-already-in-use') return 'Sunan mai amfani ana amfani da shi. Gwada wani ko je LOG IN.';
+  if(code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') return 'Sunan mai amfani ko kalmar sirri ba daidai ba ne.';
+  if(code === 'auth/weak-password') return 'Kalmar sirri ta yi rauni sosai.';
+  if(code === 'auth/network-request-failed') return 'Babu haɗin intanet. Duba haɗin ka.';
+  return 'Wani abu ya faru. Sake gwadawa.';
+}
+
+document.getElementById('password').addEventListener('keydown', e=>{ if(e.key==='Enter') submitForm(); });
+document.getElementById('confirmPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') submitForm(); });
+document.getElementById('username').addEventListener('keydown', e=>{ if(e.key==='Enter') submitForm(); });
+</script>
+
+</body>
+</html>
